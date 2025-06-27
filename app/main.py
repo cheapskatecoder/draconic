@@ -15,7 +15,7 @@ from contextlib import asynccontextmanager
 
 from app.core.database import get_db, engine, Base
 from app.core.config import settings
-from app.routes import jobs
+from app.routes import jobs, admin
 from app.services.websocket_manager import WebSocketManager
 from app.services.scheduler import TaskScheduler
 
@@ -71,6 +71,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(jobs.router, prefix="/jobs", tags=["jobs"])
+app.include_router(admin.router)
 
 
 @app.get("/")

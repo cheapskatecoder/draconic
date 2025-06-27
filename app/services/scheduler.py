@@ -12,6 +12,7 @@ from app.services.dependency_service import DependencyService
 from app.services.websocket_manager import WebSocketManager
 from app.services.resource_manager import ResourceManager
 from app.services.redis_queue import RedisQueueService
+from app.services.dead_letter_queue import DeadLetterQueueService
 from app.workers.job_executor import JobExecutor
 from app.models import JobStatus
 
@@ -25,6 +26,7 @@ class TaskScheduler:
             max_cpu=settings.max_cpu_units, max_memory=settings.max_memory_mb
         )
         self.redis_queue = RedisQueueService()
+        self.dead_letter_queue = DeadLetterQueueService()
         self.job_executor = JobExecutor()
         self.running_jobs: Dict[UUID, asyncio.Task] = {}
         self.is_running = False
@@ -253,6 +255,11 @@ class TaskScheduler:
                 # Mark as permanently failed
                 await job_service.update_job_status(
                     job.id, JobStatus.FAILED, error_message=error_message
+                )
+
+                # Add to dead letter queue
+                await self.dead_letter_queue.add_to_dlq(
+                    job.id, job.type, error_message, job.max_attempts, job.payload
                 )
 
                 # Mark job as completed in Redis for dependency tracking (even if failed)

@@ -1,283 +1,276 @@
-# 🚀 Task Queue System
+# 🚀 Draconic Task Queue System
 
-A production-ready task queue system built with **FastAPI** that handles job scheduling, prioritization, and execution with real-world constraints.
+A production-ready task queue system built with **FastAPI**, **PostgreSQL**, **Redis**, and **Docker**. Designed for high-performance job scheduling with intelligent prioritization, dependency management, and resource allocation.
 
 ## ✨ Features
 
-- **🎯 Smart Job Scheduling**: Priority-based with dependency management
-- **🔗 DAG Support**: Handle complex job dependencies with cycle detection
-- **⚡ Resource Management**: CPU and memory allocation tracking
-- **🔄 Retry Logic**: Exponential backoff with configurable attempts
-- **📊 Real-time Updates**: WebSocket support for live job monitoring
-- **🐳 Production Ready**: Docker containerization with proper logging
-- **🧪 Comprehensive Testing**: Full test suite included
+- **🎯 Smart Scheduling**: Priority-based job execution with Redis queues
+- **🔗 Dependency Management**: DAG-based job dependencies with cycle detection
+- **⚡ Resource Allocation**: Atomic resource tracking with Redis transactions
+- **🔄 Failure Handling**: Exponential backoff retry logic with dead letter queue
+- **📊 Real-time Monitoring**: WebSocket updates and comprehensive metrics
+- **🐳 Production Ready**: Docker containerization with health checks
+- **🛡️ Admin Interface**: Management API for system operations
 
-## 🏗 Architecture
+## 🏗️ Architecture
 
-```mermaid
-graph TB
-    API[FastAPI API] --> Scheduler[Task Scheduler]
-    API --> DB[(PostgreSQL)]
-    API --> Redis[(Redis Cache)]
-    
-    Scheduler --> ResourceManager[Resource Manager]
-    Scheduler --> JobExecutor[Job Executor]
-    Scheduler --> WebSocket[WebSocket Manager]
-    
-    JobExecutor --> Workers[Job Workers]
-    Workers --> JobTypes[Email/Export/Report Jobs]
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   FastAPI App   │    │   Worker Pool   │    │   Scheduler     │
+│                 │    │                 │    │                 │
+│ • REST API      │    │ • Job Execution │    │ • Queue Mgmt    │
+│ • WebSocket     │    │ • Error Handling│    │ • Dependencies  │
+│ • Admin Routes  │    │ • Retry Logic   │    │ • Resource Mgmt │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+         ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+         │   PostgreSQL    │    │     Redis       │    │   Dead Letter   │
+         │                 │    │                 │    │     Queue       │
+         │ • Job Metadata  │    │ • Priority Qs   │    │ • Failed Jobs   │
+         │ • Dependencies  │    │ • Resource Lock │    │ • Retry Logic   │
+         │ • Execution Log │    │ • Real-time Ops │    │ • Admin Mgmt    │
+         └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🚀 Quick Start
+## 🚦 Quick Start
 
 ### Prerequisites
+- Docker & Docker Compose
+- Python 3.11+ (for local development)
 
-- Python 3.11+
-- Docker and Docker Compose
-- pyenv (recommended)
-
-### 1. Clone and Setup
-
+### 1. Start the System
 ```bash
-git clone <repository>
+# Clone and start
+git clone https://github.com/cheapskatecoder/draconic
 cd draconic
-
-# Create virtual environment
-pyenv virtualenv 3.11 draconic
-pyenv activate draconic
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Start with Docker
-
-```bash
-# Start all services (PostgreSQL, Redis, API, Worker)
 docker-compose up -d
 
-# Check logs
-docker-compose logs -f app
+# Check status
+docker-compose ps
 ```
 
-### 3. Access the API
-
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-- **WebSocket**: ws://localhost:8000/jobs/stream
-
-## 📖 API Endpoints
-
-### Job Management
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/jobs/` | Submit a new job |
-| `GET` | `/jobs/{job_id}` | Get job status and details |
-| `GET` | `/jobs/` | List jobs with filtering |
-| `PATCH` | `/jobs/{job_id}/cancel` | Cancel a job |
-| `GET` | `/jobs/{job_id}/logs` | Get job execution logs |
-| `WebSocket` | `/jobs/stream` | Real-time job updates |
-
-### Example Usage
-
-#### Create a Job
-
+### 2. Submit Your First Job
 ```bash
-curl -X POST "http://localhost:8000/jobs/" \
+curl -X POST http://localhost:8000/jobs/ \
   -H "Content-Type: application/json" \
   -d '{
-    "type": "data_export",
+    "type": "send_email",
     "priority": "high",
     "payload": {
-      "user_id": 123,
-      "format": "csv"
+      "to": "user@example.com",
+      "subject": "Welcome!"
     },
     "resource_requirements": {
-      "cpu_units": 2,
-      "memory_mb": 512
-    },
-    "retry_config": {
-      "max_attempts": 3,
-      "backoff_multiplier": 2
+      "cpu_units": 1,
+      "memory_mb": 128
     }
   }'
 ```
 
-#### Create Job with Dependencies
-
+### 3. Monitor Progress
 ```bash
-curl -X POST "http://localhost:8000/jobs/" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "report_generation",
-    "priority": "normal",
-    "depends_on": ["job_id_1", "job_id_2"],
-    "payload": {
-      "report_type": "daily_summary",
-      "date": "2024-01-15"
-    }
-  }'
+# Get job status
+curl http://localhost:8000/jobs/{job_id}
+
+# List all jobs
+curl http://localhost:8000/jobs/
+
+# Get job logs
+curl http://localhost:8000/jobs/{job_id}/logs
+
+# System health
+curl http://localhost:8000/admin/health
 ```
 
-## 🔧 Job Types
+## 📋 API Endpoints
 
-The system supports various job types out of the box:
+### Core Job Management
+- `POST /jobs/` - Submit new job
+- `GET /jobs/{job_id}` - Get job details
+- `GET /jobs/` - List jobs with filtering
+- `PATCH /jobs/{job_id}/cancel` - Cancel job
+- `GET /jobs/{job_id}/logs` - Get execution logs
+- `GET /jobs/stream` - WebSocket for real-time updates
 
-- **`send_email`**: Email sending jobs
-- **`data_export`**: Data export in various formats
-- **`data_fetch`**: External API data fetching  
-- **`data_processing`**: Data transformation tasks
-- **`report_generation`**: Report creation jobs
+### Admin & Monitoring
+- `GET /admin/health` - System health check
+- `GET /admin/metrics` - Performance metrics
+- `GET /admin/dlq/` - Dead letter queue management
+- `POST /admin/dlq/{job_id}/retry` - Retry failed job
 
-## 🎯 Job States
+## 🎯 Job Types & Priorities
 
-```mermaid
-graph LR
-    PENDING --> READY
-    PENDING --> BLOCKED
-    BLOCKED --> READY
-    READY --> RUNNING
-    RUNNING --> COMPLETED
-    RUNNING --> FAILED
-    RUNNING --> TIMEOUT
-    FAILED --> PENDING[Retry]
-    TIMEOUT --> PENDING[Retry]
-    READY --> CANCELLED
-    PENDING --> CANCELLED
-    BLOCKED --> CANCELLED
+### Supported Job Types
+- `send_email` - Email notifications
+- `data_export` - Data export operations
+- `data_processing` - Heavy data processing
+- `report_generation` - Report creation
+
+### Priority Levels
+- `critical` - Immediate execution
+- `high` - High priority
+- `normal` - Standard priority  
+- `low` - Background tasks
+
+## 🔗 Job Dependencies
+
+Create complex workflows with job dependencies:
+
+```json
+{
+  "type": "report_generation",
+  "priority": "normal",
+  "depends_on": ["data_fetch_job_id", "data_process_job_id"],
+  "payload": {
+    "report_type": "daily_summary"
+  }
+}
 ```
 
-## ⚙️ Configuration
+## ⚡ Performance
 
-Key configuration options in `app/core/config.py`:
-
-```python
-# Worker settings
-max_concurrent_jobs: int = 10
-max_cpu_units: int = 8
-max_memory_mb: int = 4096
-
-# Job settings
-default_job_timeout: int = 3600  # 1 hour
-max_retry_attempts: int = 3
-retry_backoff_multiplier: float = 2.0
-```
+- **O(1) Queue Operations**: Redis-based priority queues
+- **118+ jobs/sec**: Submission throughput
+- **Sub-100ms**: Average job submission time
+- **<25MB**: Memory growth for 1000 jobs
+- **Atomic Resource Allocation**: No race conditions
 
 ## 🧪 Testing
 
 ```bash
 # Run all tests
-pytest
+docker exec draconic-app-1 python -m pytest tests/ -v
 
-# Run with coverage
-pytest --cov=app
+# Core functionality tests
+docker exec draconic-app-1 python -m pytest tests/test_jobs.py -v
 
-# Run specific test file
-pytest tests/test_jobs.py -v
+# Performance tests
+docker exec draconic-app-1 python -m pytest tests/test_performance.py -v
+
+# Run performance benchmark
+python run_performance_tests.py
 ```
 
-## 📊 Monitoring
+## 🔧 Configuration
 
-### WebSocket Events
+Environment variables in `docker-compose.yml`:
 
-Connect to `ws://localhost:8000/jobs/stream` to receive real-time updates:
-
-```json
-{
-  "type": "job_update",
-  "event": "job_started",
-  "job_id": "uuid",
-  "data": {
-    "job_id": "uuid",
-    "type": "send_email",
-    "priority": "high",
-    "timestamp": "2024-01-15T10:00:00Z"
-  }
-}
+```yaml
+environment:
+  - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/taskqueue
+  - REDIS_URL=redis://redis:6379/0
+  - MAX_CPU_UNITS=8
+  - MAX_MEMORY_MB=4096
+  - LOG_LEVEL=INFO
 ```
 
-### Logging
+## 📊 Monitoring & Observability
 
-Logs are structured and include:
-- Job lifecycle events
-- Resource allocation/deallocation
-- Error tracking with stack traces
-- Performance metrics
+### Health Checks
+```bash
+curl http://localhost:8000/admin/health
+```
 
-## 🔄 Development
+### Metrics Dashboard
+```bash
+curl http://localhost:8000/admin/metrics
+```
 
-### Project Structure
+### Real-time Updates
+```javascript
+const ws = new WebSocket('ws://localhost:8000/jobs/stream');
+ws.onmessage = (event) => {
+  const update = JSON.parse(event.data);
+  console.log('Job update:', update);
+};
+```
 
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Jobs stuck in PENDING**
+- Check resource availability: `curl http://localhost:8000/admin/metrics`
+- Verify dependencies are completed
+
+**High memory usage**
+- Monitor with: `docker stats`
+- Check for memory leaks in job handlers
+
+**Redis connection errors**
+- Restart Redis: `docker-compose restart redis`
+- Check Redis logs: `docker logs draconic-redis-1`
+
+### Debug Logs
+```bash
+# App logs
+docker logs draconic-app-1 -f
+
+# Worker logs  
+docker logs draconic-worker-1 -f
+
+# Database logs
+docker logs draconic-postgres-1 -f
+```
+
+## 🚀 Production Deployment
+
+### Scaling
+```yaml
+# docker-compose.prod.yml
+services:
+  worker:
+    scale: 4  # Multiple workers
+  
+  app:
+    deploy:
+      replicas: 2  # Load balanced API
+```
+
+### Security
+- Use environment secrets for passwords
+- Enable TLS for external access
+- Configure firewall rules
+- Regular security updates
+
+## 📚 Development
+
+### Local Setup
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Start services
+docker-compose up postgres redis -d
+
+# Run locally
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Code Structure
 ```
 app/
 ├── main.py              # FastAPI application
 ├── core/                # Core configuration
-├── models/              # SQLAlchemy models
-├── routes/              # API routes
-├── schemas/             # Pydantic schemas
+├── models/              # Database models
+├── routes/              # API endpoints
 ├── services/            # Business logic
-└── workers/             # Job execution
-
-tests/                   # Test suite
-migrations/              # Database migrations
+├── workers/             # Job execution
+└── schemas/             # Pydantic schemas
 ```
-
-### Adding New Job Types
-
-1. Add handler to `app/workers/job_executor.py`:
-
-```python
-async def _handle_my_job_type(self, job: Job) -> Dict[str, Any]:
-    # Your job logic here
-    return {"result": "success"}
-```
-
-2. Register in `job_handlers` dict:
-
-```python
-self.job_handlers["my_job_type"] = self._handle_my_job_type
-```
-
-## 🐳 Production Deployment
-
-### Environment Variables
-
-```bash
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db
-REDIS_URL=redis://host:6379/0
-MAX_CONCURRENT_JOBS=20
-MAX_CPU_UNITS=16
-MAX_MEMORY_MB=8192
-LOG_LEVEL=INFO
-```
-
-### Scaling
-
-- **Horizontal**: Run multiple worker containers
-- **Vertical**: Increase resource limits
-- **Database**: Use connection pooling
-- **Redis**: Use Redis Cluster for high availability
-
-### Monitoring
-
-- Health check endpoint: `/health`
-- Prometheus metrics (extensible)
-- Structured logging
-- Database query performance tracking
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open Pull Request
 
 ## 📄 License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
-
-**Built with ❤️ using FastAPI, PostgreSQL, and Redis** 
