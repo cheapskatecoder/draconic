@@ -6,7 +6,7 @@ This project was developed primarily through manual coding and system design.
 
 ## AI Usage
 
-Used ChatGPT to write documentation and the utility file test_api.sh
+Used ChatGPT to write documentation, and writing tests to varying degree.
 
 ---
 
